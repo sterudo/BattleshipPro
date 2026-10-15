@@ -6,8 +6,10 @@ import {
   clearFleet,
   createGame,
   fireShot,
+  moveShip,
   placeShip,
   randomizeFleet,
+  rotateShip,
   startGame,
 } from '../src/engine/gameLogic.js';
 
@@ -60,9 +62,58 @@ function expectLegalFleet(player) {
       expect(occupied.has(key)).toBe(false);
       occupied.add(key);
     }
+
   }
   expect(occupied.size).toBe(17);
 }
+
+describe('setup repositioning', () => {
+  function setup() {
+    return freeze(placeShip(createGame(), 'player-1', 'carrier', { row: 0, column: 0 }, 'horizontal'));
+  }
+
+  it('moves an existing ship without colliding with its previous cells', () => {
+    const original = setup();
+    const moved = moveShip(original, 'player-1', 'carrier', { row: 0, column: 1 }, 'horizontal');
+    expect(moved.players[0].ships).toHaveLength(1);
+    expect(moved.players[0].ships[0].cells[0]).toEqual({ row: 0, column: 1 });
+    expect(original.players[0].ships[0].cells[0]).toEqual({ row: 0, column: 0 });
+  });
+
+  it('preserves the last valid placement on overlap or off-board rejection', () => {
+    const original = freeze(placeShip(setup(), 'player-1', 'destroyer', { row: 1, column: 0 }, 'horizontal'));
+    const snapshot = structuredClone(original);
+    expectRule(() => moveShip(original, 'player-1', 'carrier', { row: 1, column: 0 }, 'horizontal'), 'INVALID_PLACEMENT');
+    expectRule(() => moveShip(original, 'player-1', 'carrier', { row: 0, column: 8 }, 'horizontal'), 'INVALID_PLACEMENT');
+    expectRule(() => moveShip(original, 'player-1', 'carrier', { row: -1, column: 0 }, 'horizontal'), 'INVALID_POSITION');
+    expect(original).toEqual(snapshot);
+  });
+
+  it('rotates in place when possible and finds the nearest legal anchor near an edge', () => {
+    const vertical = rotateShip(setup(), 'player-1', 'carrier');
+    expect(vertical.players[0].ships[0].orientation).toBe('vertical');
+    expect(vertical.players[0].ships[0].cells[0]).toEqual({ row: 0, column: 0 });
+    const edge = moveShip(setup(), 'player-1', 'carrier', { row: 9, column: 5 }, 'horizontal');
+    const rotated = rotateShip(edge, 'player-1', 'carrier').players[0].ships[0];
+    expect(rotated.orientation).toBe('vertical');
+    expect(rotated.cells[0]).toEqual({ row: 5, column: 5 });
+  });
+
+  it('finds the closest nonoverlapping position when rotating beside another ship', () => {
+    const original = freeze(placeShip(setup(), 'player-1', 'destroyer', { row: 1, column: 0 }, 'horizontal'));
+    const rotated = rotateShip(original, 'player-1', 'carrier');
+    expect(rotated.players[0].ships.find(({ id }) => id === 'carrier').cells[0])
+      .toEqual({ row: 0, column: 2 });
+    expect(original.players[0].ships[0].orientation).toBe('horizontal');
+  });
+
+  it('rejects missing ships and repositioning after setup', () => {
+    expectRule(() => moveShip(createGame(), 'player-1', 'carrier', { row: 0, column: 0 }, 'horizontal'), 'SHIP_NOT_PLACED');
+    expectRule(() => rotateShip(createGame(), 'player-1', 'carrier'), 'SHIP_NOT_PLACED');
+    expectRule(() => moveShip(playingGame(), 'alice', 'carrier', { row: 0, column: 0 }, 'horizontal'), 'INVALID_PHASE');
+    expectRule(() => rotateShip(playingGame(), 'alice', 'carrier'), 'INVALID_PHASE');
+  });
+});
 
 describe('game creation', () => {
   it('creates independent empty two-player setup state', () => {

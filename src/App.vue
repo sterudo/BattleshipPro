@@ -9,8 +9,10 @@ import {
   clearFleet,
   createGame,
   fireShot,
+  moveShip,
   placeShip,
   randomizeFleet,
+  rotateShip,
   startGame,
 } from './engine/gameLogic.js';
 import {
@@ -34,6 +36,7 @@ const orientation = ref('horizontal');
 const selectedShipId = ref(FLEET[0].id);
 const draggedShip = ref('');
 const dragPoint = ref(null);
+const placementPreview = ref(null);
 const notice = ref('Select a ship, then place it anywhere on the grid.');
 const error = ref('');
 const shotLog = ref([]);
@@ -61,7 +64,7 @@ const aiTurns = createAiTurnRunner({
 
 const human = computed(() => game.value.players.find(({ id }) => id === HUMAN));
 const computer = computed(() => game.value.players.find(({ id }) => id === COMPUTER));
-const selectedShip = computed(() => FLEET.find(({ id }) => id === selectedShipId.value));
+const selectedShip = computed(() => FLEET.find(({ id }) => id === (draggedShip.value || selectedShipId.value)));
 const placedShipIds = computed(() => new Set(human.value.ships.map(({ id }) => id)));
 const remainingShips = computed(() => FLEET.filter(({ id }) => !placedShipIds.value.has(id)));
 const isSetup = computed(() => game.value.phase === 'setup');
@@ -110,10 +113,11 @@ function clickShip(event, shipId) {
   selectShip(shipId);
 }
 
-function startShipDrag(event, shipId) {
+function startShipDrag(event, shipId, grabbedCell) {
   if (!event.isPrimary || event.button !== 0 || !isSetup.value) return;
   suppressShipClick = false;
   selectShip(shipId);
+  const placed = human.value.ships.find((ship) => ship.id === shipId);
   pointerDrag = {
     id: event.pointerId,
     shipId,
@@ -121,6 +125,11 @@ function startShipDrag(event, shipId) {
     startY: event.clientY,
     source: event.currentTarget,
     moved: false,
+    orientation: placed?.orientation ?? orientation.value,
+    offset: grabbedCell && placed ? {
+      row: grabbedCell.row - placed.cells[0].row,
+      column: grabbedCell.column - placed.cells[0].column,
+    } : { row: 0, column: 0 },
   };
   event.currentTarget.setPointerCapture(event.pointerId);
 }
@@ -130,6 +139,7 @@ function scrollWhileDragging() {
   const { y } = dragPoint.value;
   if (y < 65) window.scrollBy(0, -10);
   else if (y > window.innerHeight - 65) window.scrollBy(0, 10);
+  updatePlacementPreview(dragPoint.value.x, dragPoint.value.y);
   dragScrollFrame = window.requestAnimationFrame(scrollWhileDragging);
 }
 
@@ -143,6 +153,59 @@ function moveShipDrag(event) {
     draggedShip.value = pointerDrag.shipId;
     scrollWhileDragging();
   }
+  if (pointerDrag.moved) updatePlacementPreview(event.clientX, event.clientY);
+}
+
+function updatePlacementPreview(x, y) {
+  const cell = document.elementFromPoint(x, y)?.closest('[data-placement-cell]');
+  if (!cell || !pointerDrag) {
+    placementPreview.value = null;
+    return;
+  }
+  const position = {
+    row: Number(cell.dataset.row) - pointerDrag.offset.row,
+    column: Number(cell.dataset.column) - pointerDrag.offset.column,
+  };
+  const ship = FLEET.find(({ id }) => id === pointerDrag.shipId);
+  let valid = true;
+  try {
+    const operation = placedShipIds.value.has(ship.id) ? moveShip : placeShip;
+    operation(game.value, HUMAN, ship.id, position, pointerDrag.orientation);
+  } catch (caught) {
+    if (!(caught instanceof RuleError)) throw caught;
+    valid = false;
+  }
+  placementPreview.value = {
+    position,
+    valid,
+    cells: Array.from({ length: ship.length }, (_, offset) => ({
+      row: position.row + (pointerDrag.orientation === 'vertical' ? offset : 0),
+      column: position.column + (pointerDrag.orientation === 'horizontal' ? offset : 0),
+    })),
+  };
+}
+
+function startBoardDrag(event, position) {
+  const ship = human.value.ships.find(({ cells }) => (
+    cells.some((cell) => cell.row === position.row && cell.column === position.column)
+  ));
+  if (ship) startShipDrag(event, ship.id, position);
+}
+
+function rotateBoardShip(position) {
+  if (!isSetup.value) return;
+  const ship = human.value.ships.find(({ cells }) => (
+    cells.some((cell) => cell.row === position.row && cell.column === position.column)
+  ));
+  if (!ship) return;
+  cancelShipDrag();
+  try {
+    game.value = rotateShip(game.value, HUMAN, ship.id);
+    error.value = '';
+    notice.value = `${ship.name} rotated to the nearest available position.`;
+  } catch (caught) {
+    presentError(caught);
+  }
 }
 
 function cancelShipDrag() {
@@ -154,27 +217,29 @@ function cancelShipDrag() {
   window.cancelAnimationFrame(dragScrollFrame);
   draggedShip.value = '';
   dragPoint.value = null;
+  placementPreview.value = null;
 }
 
 function endShipDrag(event) {
   if (!pointerDrag || pointerDrag.id !== event.pointerId) return;
-  const { shipId, moved } = pointerDrag;
-  const cell = document.elementFromPoint(event.clientX, event.clientY)
-    ?.closest('[data-placement-cell]');
+  const { shipId, moved, orientation: shipOrientation } = pointerDrag;
+  updatePlacementPreview(event.clientX, event.clientY);
+  const preview = placementPreview.value;
   cancelShipDrag();
   if (!moved) return;
   suppressShipClick = true;
-  if (cell) {
-    placeSelected({ row: Number(cell.dataset.row), column: Number(cell.dataset.column) }, shipId);
+  if (preview) {
+    placeSelected(preview.position, shipId, shipOrientation);
   } else {
     notice.value = 'Drag cancelled. Drop on your waters, or tap a starting cell to place the selected ship.';
   }
 }
 
-function placeSelected(position, shipId = selectedShipId.value) {
+function placeSelected(position, shipId = selectedShipId.value, shipOrientation = orientation.value) {
   if (!isSetup.value || !shipId) return;
   try {
-    game.value = placeShip(game.value, HUMAN, shipId, position, orientation.value);
+    const operation = placedShipIds.value.has(shipId) ? moveShip : placeShip;
+    game.value = operation(game.value, HUMAN, shipId, position, shipOrientation);
     const nextShip = FLEET.find(({ id }) => !game.value.players[0].ships.some((ship) => ship.id === id));
     selectedShipId.value = nextShip?.id ?? '';
     notice.value = nextShip
@@ -187,7 +252,14 @@ function placeSelected(position, shipId = selectedShipId.value) {
 }
 
 function onCell(position) {
+  if (suppressShipClick) {
+    suppressShipClick = false;
+    return;
+  }
   if (isSetup.value) {
+    if (human.value.ships.some(({ cells }) => cells.some((cell) => (
+      cell.row === position.row && cell.column === position.column
+    )))) return;
     placeSelected(position, draggedShip.value || selectedShipId.value);
     draggedShip.value = '';
     return;
@@ -402,7 +474,7 @@ function formatDate(value) {
                 <span class="rotate-icon" aria-hidden="true">↻</span> {{ orientation === 'horizontal' ? 'Horizontal' : 'Vertical' }}
               </button>
             </div>
-            <p class="hint">Choose a vessel and tap a starting cell, or drag it onto the grid.</p>
+            <p class="hint">Click or drag to place. Drag ships on your board to move them; right-click a ship (or focus its cell and press R) to rotate it. Red previews cannot be placed.</p>
             <div class="ship-list">
               <button
                 v-for="ship in FLEET"
@@ -444,7 +516,13 @@ function formatDate(value) {
             :setup-mode="isSetup"
             :disabled="!isSetup"
             :dragged-ship="draggedShip"
+            :placement-preview="placementPreview"
             @cell="onCell"
+            @ship-pointerdown="startBoardDrag"
+            @ship-pointermove="moveShipDrag"
+            @ship-pointerup="endShipDrag"
+            @ship-pointercancel="cancelShipDrag"
+            @rotate="rotateBoardShip"
           />
           <GameBoard
             :player="computer"

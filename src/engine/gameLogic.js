@@ -129,6 +129,41 @@ export function clearFleet(game, playerId) {
   return replacePlayer(game, { ...player, ships: [] });
 }
 
+export function moveShip(game, playerId, shipId, position, orientation) {
+  requirePhase(game, 'setup');
+  const player = getPlayer(game, playerId);
+  requireRule(player.ships.some((ship) => ship.id === shipId),
+    'SHIP_NOT_PLACED', 'Place this ship before moving it.');
+  const withoutShip = replacePlayer(game, {
+    ...player,
+    ships: player.ships.filter((ship) => ship.id !== shipId),
+  });
+  return placeShip(withoutShip, playerId, shipId, position, orientation);
+}
+
+export function rotateShip(game, playerId, shipId) {
+  requirePhase(game, 'setup');
+  const player = getPlayer(game, playerId);
+  const ship = player.ships.find((entry) => entry.id === shipId);
+  requireRule(ship, 'SHIP_NOT_PLACED', 'Place this ship before rotating it.');
+  const orientation = ship.orientation === 'horizontal' ? 'vertical' : 'horizontal';
+  const others = player.ships.filter((entry) => entry.id !== shipId);
+  const origin = ship.cells[0];
+  const positions = [];
+  for (let row = 0; row < BOARD_SIZE; row += 1) {
+    for (let column = 0; column < BOARD_SIZE; column += 1) {
+      const position = { row, column };
+      if (fits(others, shipCells(ship, position, orientation))) positions.push(position);
+    }
+  }
+  positions.sort((a, b) => (
+    Math.abs(a.row - origin.row) + Math.abs(a.column - origin.column)
+    - Math.abs(b.row - origin.row) - Math.abs(b.column - origin.column)
+  ));
+  requireRule(positions.length, 'NO_LEGAL_PLACEMENT', 'No space is available to rotate this ship.');
+  return moveShip(game, playerId, shipId, positions[0], orientation);
+}
+
 export function randomizeFleet(game, playerId, random = Math.random) {
   requirePhase(game, 'setup');
   const player = getPlayer(game, playerId);

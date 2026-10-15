@@ -77,6 +77,11 @@ Public operations:
   fleet ship; orientations are `horizontal` or `vertical`, extending toward
   increasing column or row respectively.
 - `clearFleet(game, playerId)` removes that player's setup placements.
+- `moveShip(game, playerId, shipId, position, orientation)` atomically repositions
+  an existing ship during setup, ignoring its own previous cells for collision
+  checks. Invalid moves leave the input state unchanged.
+- `rotateShip(game, playerId, shipId)` rotates an existing setup ship into the
+  nearest legal position, retaining the original if rotation is impossible.
 - `randomizeFleet(game, playerId, random?)` replaces that player's setup fleet
   with a complete legal fleet.
 - `startGame(game, random?)` requires both fleets and selects the first shooter.
@@ -100,6 +105,17 @@ among legal placements rather than relying on unbounded random retries.
   chooses horizontal/vertical orientation, and places by click or drag-and-drop.
   Include randomize and clear controls. Ships may touch, but cannot overlap or
   extend off-board. Provide accessible controls that also work on touch devices.
+- Setup refinement: placed ships can be dragged from any occupied segment,
+  retaining the grabbed segment's offset. Preview the candidate cells in green
+  for legal placement and red for overlap or board-edge violations. Invalid
+  drops and cancelled drags preserve the last valid placement.
+- Right-click a placed ship to change orientation (`R` on a focused ship cell
+  is the keyboard equivalent). Choose the legal anchor with the smallest
+  Manhattan distance from its previous anchor; ties use row then column order.
+  If no rotated placement exists, report the error and keep the old placement.
+- Render visible ships with continuous top-down hull, bow and deck outlines,
+  without exposing hidden enemy ships. Darken only the main background gradient
+  by 50% (RGB channels), leaving panel colors and the broader UI unchanged.
 - Randomize the AI fleet and keep it hidden during play. Reveal it when the match
   ends. Announce the randomly selected first shooter before the first shot.
 - Preserve the engine's turn and validation behavior: one shot per turn; hits,
@@ -180,8 +196,11 @@ among legal placements rather than relying on unbounded random retries.
   keyboard and click-to-place controls remain available. Pending AI turns are
   cancelled on restart/unmount, and each async continuation is tied to its own
   run so it cannot mutate a new match or reset a newer run's processing flag.
-- Verification: `npm test` passes all 88 tests; `npm run test:browser` passes
-  four desktop/mobile browser regressions (two device-inapplicable cases skipped),
+- Verification: `npm test` passes all 93 tests; `npm run test:browser` passes
+  eight desktop/mobile browser regressions (two device-inapplicable cases skipped),
   covering real touch-event placement in Pixel 5 emulation, rotation, overlap,
   cancellation, mouse/keyboard placement, and restarting during an AI delay.
   `npm run build` produces the production bundle.
+- Phase 2 placement refinements complete: movable placed ships, nearest-fit
+  rotation, invalid-placement previews and rollback, top-down ship silhouettes,
+  and a 50% darker main background.

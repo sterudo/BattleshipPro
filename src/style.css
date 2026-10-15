@@ -1,11 +1,11 @@
 :root {
   font-family: 'Segoe UI', Arial, sans-serif;
   color: #e7f0f3;
-  background: #071923;
+  background: #040d12;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --bg: #071923;
+  --bg: #040d12;
   --panel: #0c222d;
   --panel-raised: #102a36;
   --border: #1d3945;
@@ -21,7 +21,7 @@ body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input { font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--aqua); outline-offset: 3px; }
-.app-shell { min-height: 100vh; background: radial-gradient(ellipse at 38% 0%, #0d2a35 0, var(--bg) 47rem); }
+.app-shell { min-height: 100vh; background: radial-gradient(ellipse at 38% 0%, #07151b 0, var(--bg) 47rem); }
 .topbar { height: 68px; padding: 0 clamp(20px, 4.4vw, 72px); border-bottom: 1px solid #17313c; display: flex; align-items: center; justify-content: space-between; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font: 800 13px 'Segoe UI', sans-serif; letter-spacing: .16em; }
 .brand-mark { color: var(--aqua); font: 26px Georgia, serif; transform: rotate(-35deg); }
@@ -92,16 +92,24 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .board-row { display: flex; gap: 5px; }
 .axis-side { display: grid; grid-template-rows: repeat(10, minmax(0, 1fr)); width: 15px; text-align: center; font-size: 9px; }
 .axis-side span { display: grid; place-items: center; }
-.game-board { flex: 1; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); border-top: 1px solid #30505b; border-left: 1px solid #30505b; aspect-ratio: 1; background: #0b2a37; }
+.game-board { position: relative; flex: 1; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); border-top: 1px solid #30505b; border-left: 1px solid #30505b; aspect-ratio: 1; background: #0b2a37; }
 .cell { position: relative; min-width: 0; padding: 0; border: 0; border-right: 1px solid #264754; border-bottom: 1px solid #264754; background: #0d2d3a; display: grid; place-items: center; cursor: crosshair; touch-action: manipulation; }
 .cell:not(:disabled):hover { background: #1b5560; }
 .cell:disabled { cursor: default; }
 .cell.is-ship { background: #17424b; }
-.cell.is-ship::after { content: ''; width: 56%; height: 56%; border: 1px solid #70c8bc; border-radius: 2px; background: #29616a; }
+.cell[data-placement-cell].is-ship { cursor: grab; touch-action: none; }
+.ship-layer { position: absolute; inset: 0; pointer-events: none; }
+.board-ship { position: absolute; overflow: visible; padding: 2px; }
+.ship-hull { fill: #347a83; stroke: #91d9ce; stroke-width: .8; }
+.ship-deck { fill: #21505b; stroke: #6ab4ae; stroke-width: .5; }
+.ship-bridge { fill: #7fb8b5; stroke: #133b46; stroke-width: .7; }
+.ship-detail { fill: none; stroke: #b3d7d2; stroke-width: .7; }
+.cell.placement-valid, .cell.placement-invalid { z-index: 2; box-shadow: inset 0 0 0 2px var(--aqua); background: #246b5dcc; }
+.cell.placement-invalid { box-shadow: inset 0 0 0 2px #ff826e; background: #913f45cc; }
 .cell.is-hit { background: #542f34; }
 .cell.is-hit::after { display: none; }
 .cell.is-sunk { background: #773b3c; }
-.hit-mark { z-index: 1; color: #ff826e; font: 600 19px 'Segoe UI', sans-serif; line-height: 1; }
+.hit-mark { z-index: 1; color: #ff826e; font: 600 19px 'Segoe UI', sans-serif; line-height: 1; text-shadow: 0 0 3px #1d0d10; }
 .miss-dot { width: 5px; height: 5px; border-radius: 50%; background: #a4bdc4; }
 .cell.is-setup-target:hover { background: #164d55; }
 .launch-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 2px; }
