@@ -9,7 +9,7 @@ const props = defineProps({
   draggedShip: { type: String, default: '' },
 });
 
-const emit = defineEmits(['cell', 'drop']);
+const emit = defineEmits(['cell']);
 
 function shipAt(row, column) {
   return props.player.ships.find(({ cells }) => (
@@ -70,9 +70,10 @@ function label(row, column) {
             role="gridcell"
             :aria-label="label(Math.floor((cell - 1) / 10), (cell - 1) % 10)"
             :disabled="disabled"
+            :data-placement-cell="setupMode ? '' : undefined"
+            :data-row="Math.floor((cell - 1) / 10)"
+            :data-column="(cell - 1) % 10"
             @click="emit('cell', { row: Math.floor((cell - 1) / 10), column: (cell - 1) % 10 })"
-            @dragover.prevent
-            @drop.prevent="emit('drop', { row: Math.floor((cell - 1) / 10), column: (cell - 1) % 10 })"
           >
             <span v-if="shotAt(Math.floor((cell - 1) / 10), (cell - 1) % 10)?.result === 'miss'" class="miss-dot" />
             <span v-else-if="shotAt(Math.floor((cell - 1) / 10), (cell - 1) % 10)" class="hit-mark">×</span>

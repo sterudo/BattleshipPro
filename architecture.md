@@ -125,6 +125,10 @@ among legal placements rather than relying on unbounded random retries.
   external AI providers, tactical economy/items, or 3D.
 - Run the local development server with `npm run dev`; create the production
   bundle with `npm run build`.
+- Run unit tests with `npm test`. For the desktop and mobile-emulated browser
+  regressions, install Chromium with `npx playwright install chromium` after
+  `npm install`, then run `npm run test:browser`. The runner starts and stops
+  its own local Vite server.
 
 ## Phase 2 definition of done
 
@@ -170,5 +174,14 @@ among legal placements rather than relying on unbounded random retries.
   acceptance criteria, including legal randomized fleets and complete games.
 - Phase 2 complete: responsive Vue 3/Vite game, three local AI strategies,
   accessible fleet setup and battle boards, completed-match persistence, replay,
-  and history controls. `npm test` passes all 83 tests and `npm run build`
-  produces the production bundle.
+  and history controls.
+- Phase 2 review fixes: fleet dragging uses captured pointer events for mouse
+  and touch, with cancellation, a drag indicator, and edge auto-scrolling;
+  keyboard and click-to-place controls remain available. Pending AI turns are
+  cancelled on restart/unmount, and each async continuation is tied to its own
+  run so it cannot mutate a new match or reset a newer run's processing flag.
+- Verification: `npm test` passes all 88 tests; `npm run test:browser` passes
+  four desktop/mobile browser regressions (two device-inapplicable cases skipped),
+  covering real touch-event placement in Pixel 5 emulation, rotation, overlap,
+  cancellation, mouse/keyboard placement, and restarting during an AI delay.
+  `npm run build` produces the production bundle.

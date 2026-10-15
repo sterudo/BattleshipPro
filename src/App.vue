@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import GameBoard from './components/GameBoard.vue';
 import { chooseAiShot } from './engine/ai.js';
+import { createAiTurnRunner } from './engine/aiTurnRunner.js';
 import {
   FLEET,
   RuleError,
@@ -32,6 +33,7 @@ const difficulty = ref('medium');
 const orientation = ref('horizontal');
 const selectedShipId = ref(FLEET[0].id);
 const draggedShip = ref('');
+const dragPoint = ref(null);
 const notice = ref('Select a ship, then place it anywhere on the grid.');
 const error = ref('');
 const shotLog = ref([]);
@@ -42,6 +44,20 @@ const replayMatch = ref(null);
 const replayCursor = ref(0);
 const replayPlaying = ref(false);
 let replayTimer;
+let pointerDrag;
+let dragScrollFrame;
+let suppressShipClick = false;
+const aiTurns = createAiTurnRunner({
+  canShoot: () => game.value.phase === 'playing' && game.value.currentPlayerId === COMPUTER,
+  shoot: () => {
+    const position = chooseAiShot(game.value, COMPUTER, difficulty.value);
+    const shot = recordShot(COMPUTER, HUMAN, position);
+    notice.value = describeShot(COMPUTER, shot);
+    if (game.value.phase === 'finished') finishMatch();
+  },
+  onError: presentError,
+  onProcessing: (processing) => { processingAi.value = processing; },
+});
 
 const human = computed(() => game.value.players.find(({ id }) => id === HUMAN));
 const computer = computed(() => game.value.players.find(({ id }) => id === COMPUTER));
@@ -67,7 +83,11 @@ onMounted(() => {
   }
 });
 
-onBeforeUnmount(() => stopReplay());
+onBeforeUnmount(() => {
+  aiTurns.cancel();
+  cancelShipDrag();
+  stopReplay();
+});
 
 function presentError(caught) {
   error.value = caught instanceof RuleError
@@ -81,6 +101,74 @@ function selectShip(shipId) {
   selectedShipId.value = shipId;
   notice.value = `Place your ${FLEET.find(({ id }) => id === shipId).name}.`;
   error.value = '';
+}
+
+function clickShip(event, shipId) {
+  const suppress = suppressShipClick && event.detail > 0;
+  suppressShipClick = false;
+  if (suppress) return;
+  selectShip(shipId);
+}
+
+function startShipDrag(event, shipId) {
+  if (!event.isPrimary || event.button !== 0 || !isSetup.value) return;
+  suppressShipClick = false;
+  selectShip(shipId);
+  pointerDrag = {
+    id: event.pointerId,
+    shipId,
+    startX: event.clientX,
+    startY: event.clientY,
+    source: event.currentTarget,
+    moved: false,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+
+function scrollWhileDragging() {
+  if (!pointerDrag?.moved || !dragPoint.value) return;
+  const { y } = dragPoint.value;
+  if (y < 65) window.scrollBy(0, -10);
+  else if (y > window.innerHeight - 65) window.scrollBy(0, 10);
+  dragScrollFrame = window.requestAnimationFrame(scrollWhileDragging);
+}
+
+function moveShipDrag(event) {
+  if (!pointerDrag || pointerDrag.id !== event.pointerId) return;
+  dragPoint.value = { x: event.clientX, y: event.clientY };
+  if (!pointerDrag.moved && Math.hypot(
+    event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY,
+  ) >= 6) {
+    pointerDrag.moved = true;
+    draggedShip.value = pointerDrag.shipId;
+    scrollWhileDragging();
+  }
+}
+
+function cancelShipDrag() {
+  const drag = pointerDrag;
+  pointerDrag = undefined;
+  if (drag?.source.hasPointerCapture(drag.id)) {
+    drag.source.releasePointerCapture(drag.id);
+  }
+  window.cancelAnimationFrame(dragScrollFrame);
+  draggedShip.value = '';
+  dragPoint.value = null;
+}
+
+function endShipDrag(event) {
+  if (!pointerDrag || pointerDrag.id !== event.pointerId) return;
+  const { shipId, moved } = pointerDrag;
+  const cell = document.elementFromPoint(event.clientX, event.clientY)
+    ?.closest('[data-placement-cell]');
+  cancelShipDrag();
+  if (!moved) return;
+  suppressShipClick = true;
+  if (cell) {
+    placeSelected({ row: Number(cell.dataset.row), column: Number(cell.dataset.column) }, shipId);
+  } else {
+    notice.value = 'Drag cancelled. Drop on your waters, or tap a starting cell to place the selected ship.';
+  }
 }
 
 function placeSelected(position, shipId = selectedShipId.value) {
@@ -142,7 +230,7 @@ function beginGame() {
     selectedShipId.value = '';
     notice.value = `${game.value.firstPlayerId === HUMAN ? 'You' : 'The computer'} fire first.`;
     error.value = '';
-    if (game.value.currentPlayerId === COMPUTER) runAiTurns();
+    if (game.value.currentPlayerId === COMPUTER) aiTurns.start();
   } catch (caught) {
     presentError(caught);
   }
@@ -196,39 +284,15 @@ function fireAt(position) {
     notice.value = describeShot(HUMAN, shot);
     error.value = '';
     if (game.value.phase === 'finished') finishMatch();
-    else if (game.value.currentPlayerId === COMPUTER) runAiTurns();
+    else if (game.value.currentPlayerId === COMPUTER) aiTurns.start();
   } catch (caught) {
     presentError(caught);
-  }
-}
-
-function wait(milliseconds) {
-  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
-}
-
-async function runAiTurns() {
-  if (processingAi.value || game.value.phase !== 'playing') return;
-  processingAi.value = true;
-  try {
-    while (game.value.phase === 'playing' && game.value.currentPlayerId === COMPUTER) {
-      await wait(420);
-      if (game.value.phase !== 'playing' || game.value.currentPlayerId !== COMPUTER) break;
-      const position = chooseAiShot(game.value, COMPUTER, difficulty.value);
-      const shot = recordShot(COMPUTER, HUMAN, position);
-      notice.value = describeShot(COMPUTER, shot);
-      if (game.value.phase === 'finished') {
-        finishMatch();
-        break;
-      }
-    }
-  } catch (caught) {
-    presentError(caught);
-  } finally {
-    processingAi.value = false;
   }
 }
 
 function restart() {
+  aiTurns.cancel();
+  cancelShipDrag();
   stopReplay();
   replayMatch.value = null;
   game.value = createGame([HUMAN, COMPUTER]);
@@ -347,11 +411,13 @@ function formatDate(value) {
                 :class="{ selected: selectedShipId === ship.id, placed: placedShipIds.has(ship.id) }"
                 type="button"
                 :disabled="placedShipIds.has(ship.id)"
-                :draggable="!placedShipIds.has(ship.id)"
                 :aria-pressed="selectedShipId === ship.id"
-                @click="selectShip(ship.id)"
-                @dragstart="draggedShip = ship.id"
-                @dragend="draggedShip = ''"
+                @click="clickShip($event, ship.id)"
+                @pointerdown="startShipDrag($event, ship.id)"
+                @pointermove="moveShipDrag"
+                @pointerup="endShipDrag"
+                @pointercancel="cancelShipDrag"
+                @lostpointercapture="cancelShipDrag"
               >
                 <span class="ship-symbol" aria-hidden="true"><i v-for="segment in ship.length" :key="segment" /></span>
                 <span class="ship-name">{{ ship.name }}<small>{{ ship.length }} cells</small></span>
@@ -379,7 +445,6 @@ function formatDate(value) {
             :disabled="!isSetup"
             :dragged-ship="draggedShip"
             @cell="onCell"
-            @drop="placeSelected($event, draggedShip || selectedShipId); draggedShip = ''"
           />
           <GameBoard
             :player="computer"
@@ -432,6 +497,13 @@ function formatDate(value) {
           </button>
         </section>
       </section>
+
+      <div
+        v-if="draggedShip && dragPoint"
+        class="drag-preview"
+        aria-hidden="true"
+        :style="{ left: `${dragPoint.x + 12}px`, top: `${dragPoint.y - 34}px` }"
+      >{{ selectedShip?.name }} · {{ orientation }}</div>
 
       <aside class="intel-rail">
         <section class="intel-card">

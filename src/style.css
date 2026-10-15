@@ -56,7 +56,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .rotate-icon { display: inline-block; margin-right: 4px; color: var(--aqua); font-size: 16px; vertical-align: -1px; }
 .hint { margin: 6px 0 13px; color: #8299a2; font-size: 11px; }
 .ship-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-.ship-option { min-width: 0; display: flex; align-items: center; gap: 7px; padding: 9px 8px; border: 1px solid #1e3945; border-radius: 5px; background: #0a1e27; text-align: left; cursor: pointer; }
+.ship-option { min-width: 0; display: flex; align-items: center; gap: 7px; padding: 9px 8px; border: 1px solid #1e3945; border-radius: 5px; background: #0a1e27; text-align: left; cursor: pointer; touch-action: none; user-select: none; }
+.drag-preview { position: fixed; z-index: 10; pointer-events: none; max-width: 200px; border: 1px solid var(--aqua); border-radius: 5px; background: #10333a; color: var(--text); padding: 7px 10px; font-size: 11px; }
 .ship-option.selected { border-color: #55b9ae; background: #10333a; }
 .ship-option.placed { opacity: .46; cursor: default; }
 .ship-symbol { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
