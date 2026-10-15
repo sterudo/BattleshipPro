@@ -33,9 +33,9 @@ changing scope. Unresolved future details remain deferred rather than assumed.
 
 ## Development phases
 
-1. **Rules foundation (current phase):** this architecture document, a pure
+1. **Rules foundation (complete):** this architecture document, a pure
    JavaScript two-player rules engine, and Vitest tests. No playable app yet.
-2. **2D single-player release (active):** deliver a responsive Vue 3 browser
+2. **2D single-player release (complete):** deliver a responsive Vue 3 browser
    game using plain JavaScript and Vite. Include manual and drag-and-drop fleet
    setup, randomize/clear controls, built-in Easy/Medium/Hard local AI, classic
    battle rules, end-of-game fleet reveal, replay, and local match history.
@@ -125,6 +125,10 @@ among legal placements rather than relying on unbounded random retries.
   external AI providers, tactical economy/items, or 3D.
 - Run the local development server with `npm run dev`; create the production
   bundle with `npm run build`.
+- Run unit tests with `npm test`. For the desktop and mobile-emulated browser
+  regressions, install Chromium with `npx playwright install chromium` after
+  `npm install`, then run `npm run test:browser`. The runner starts and stops
+  its own local Vite server.
 
 ## Phase 2 definition of done
 
@@ -168,6 +172,16 @@ among legal placements rather than relying on unbounded random retries.
 - Confirmed requirements and phase plan recorded.
 - Phase 1 complete: framework-independent rules engine and Vitest coverage of all
   acceptance criteria, including legal randomized fleets and complete games.
-- Phase 2 confirmed decisions, boundaries, acceptance criteria, and local run
-  command are recorded above. Phase 2 implementation is active in an isolated
-  worktree based on `main`.
+- Phase 2 complete: responsive Vue 3/Vite game, three local AI strategies,
+  accessible fleet setup and battle boards, completed-match persistence, replay,
+  and history controls.
+- Phase 2 review fixes: fleet dragging uses captured pointer events for mouse
+  and touch, with cancellation, a drag indicator, and edge auto-scrolling;
+  keyboard and click-to-place controls remain available. Pending AI turns are
+  cancelled on restart/unmount, and each async continuation is tied to its own
+  run so it cannot mutate a new match or reset a newer run's processing flag.
+- Verification: `npm test` passes all 88 tests; `npm run test:browser` passes
+  four desktop/mobile browser regressions (two device-inapplicable cases skipped),
+  covering real touch-event placement in Pixel 5 emulation, rotation, overlap,
+  cancellation, mouse/keyboard placement, and restarting during an AI delay.
+  `npm run build` produces the production bundle.
