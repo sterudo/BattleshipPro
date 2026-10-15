@@ -33,9 +33,9 @@ changing scope. Unresolved future details remain deferred rather than assumed.
 
 ## Development phases
 
-1. **Rules foundation (current phase):** this architecture document, a pure
+1. **Rules foundation (complete):** this architecture document, a pure
    JavaScript two-player rules engine, and Vitest tests. No playable app yet.
-2. **2D single-player release (active):** deliver a responsive Vue 3 browser
+2. **2D single-player release (complete):** deliver a responsive Vue 3 browser
    game using plain JavaScript and Vite. Include manual and drag-and-drop fleet
    setup, randomize/clear controls, built-in Easy/Medium/Hard local AI, classic
    battle rules, end-of-game fleet reveal, replay, and local match history.
@@ -168,6 +168,7 @@ among legal placements rather than relying on unbounded random retries.
 - Confirmed requirements and phase plan recorded.
 - Phase 1 complete: framework-independent rules engine and Vitest coverage of all
   acceptance criteria, including legal randomized fleets and complete games.
-- Phase 2 confirmed decisions, boundaries, acceptance criteria, and local run
-  command are recorded above. Phase 2 implementation is active in an isolated
-  worktree based on `main`.
+- Phase 2 complete: responsive Vue 3/Vite game, three local AI strategies,
+  accessible fleet setup and battle boards, completed-match persistence, replay,
+  and history controls. `npm test` passes all 83 tests and `npm run build`
+  produces the production bundle.
