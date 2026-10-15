@@ -310,4 +310,11 @@ among legal placements rather than relying on unbounded random retries.
   and a 50% darker main background.
 - Phase 3 requirements clarified and recorded, including persistent names,
   mode-specific high scores and name-based achievements; implementation has
-  not started.
+  completed: private local setup and pass-and-play, hidden battle fleets,
+  named local replays, independent player profiles, two mode leaderboards,
+  and persistent idempotent achievements.
+- Phase 3 verification: `npm test` passes all 113 unit tests;
+  `npm run test:browser` passes 12 desktop/mobile regressions (two
+  device-inapplicable cases skipped), including local fleet privacy, turn
+  handoff, named replay reload, rematches, and cancellation; `npm run build`
+  succeeds.
