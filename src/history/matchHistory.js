@@ -55,12 +55,23 @@ function validFleet(player) {
 
 function validateMatch(match) {
   const players = match?.game?.players;
+  const mode = match?.mode ?? 'solo';
   const validPlayers = Array.isArray(players) && players.length === 2
     && players.every((player) => (
       typeof player?.id === 'string' && player.id.trim().length > 0
     ))
     && new Set(players.map((player) => player.id)).size === 2;
   const playerIds = validPlayers ? players.map(({ id }) => id) : [];
+  const validPlayerNames = match?.playerNames === undefined
+    || (match.playerNames != null
+      && typeof match.playerNames === 'object'
+      && (mode === 'local'
+        ? playerIds.every((id) => typeof match.playerNames[id] === 'string'
+          && match.playerNames[id].trim().length > 0)
+          && new Set(playerIds.map((id) => match.playerNames[id].trim().toLowerCase())).size === 2
+        : Object.values(match.playerNames).some((name) => (
+          typeof name === 'string' && name.trim().length > 0
+        ))));
   const validFleets = validPlayers && players.every(validFleet);
   const validShots = validFleets && players.every((player) => {
     if (!Array.isArray(player.shots)) return false;
@@ -97,7 +108,10 @@ function validateMatch(match) {
   if (typeof match?.id !== 'string'
     || typeof match?.createdAt !== 'string'
     || Number.isNaN(Date.parse(match.createdAt))
-    || !['easy', 'medium', 'hard'].includes(match?.difficulty)
+    || !['solo', 'local'].includes(mode)
+    || (mode === 'solo' && !['easy', 'medium', 'hard'].includes(match?.difficulty))
+    || (mode === 'local' && match?.difficulty !== null)
+    || !validPlayerNames
     || match?.game?.phase !== 'finished'
     || !playerIds.includes(match.game.winnerId)
     || !playerIds.includes(match.game.firstPlayerId)
