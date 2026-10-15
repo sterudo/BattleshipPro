@@ -331,7 +331,6 @@ function placeSelected(position, shipId = selectedShipId.value, shipOrientation 
       ? `${FLEET.find(({ id }) => id === shipId).name} placed. Now place your ${nextShip.name}.`
       : 'Fleet ready.';
     error.value = '';
-    advanceLocalSetup();
   } catch (caught) {
     presentError(caught);
   }
@@ -366,7 +365,6 @@ function randomizePlayerFleet() {
     selectedShipId.value = '';
     notice.value = 'Fleet randomized. Review the layout or start the engagement.';
     error.value = '';
-    advanceLocalSetup();
   } catch (caught) {
     presentError(caught);
   }
@@ -841,7 +839,7 @@ function formatDate(value) {
 
         <section v-if="isFinished && !replayMatch" class="result-panel">
           <div class="result-icon">✦</div>
-          <div><span class="step-tag">MISSION REPORT</span><h2>{{ nameForPlayer(game.winnerId) }} wins</h2><p>{{ mode === 'local' ? 'Both fleets are revealed for review.' : game.winnerId === HUMAN ? 'You successfully located and sank the entire opposing fleet.' : 'The opposing fleet has sunk your final vessel.' }} The finished match has been recorded.</p></div>
+          <div><span class="step-tag">MISSION REPORT</span><h2>{{ nameForPlayer(game.winnerId) }} wins</h2><p>{{ mode === 'local' ? 'Both fleets are revealed for review.' : game.winnerId === HUMAN ? 'You successfully located and sank the entire opposing fleet.' : 'The opposing fleet has sunk your final vessel.' }} {{ historyError ? 'Replay could not be saved.' : 'Replay saved.' }} {{ progressError ? 'Player progress could not be saved.' : 'Player progress saved.' }}</p></div>
           <div class="result-actions"><button class="primary-button" type="button" @click="restart">{{ mode === 'local' ? 'New local match' : 'New engagement' }} <span aria-hidden="true">→</span></button><button class="secondary-button" type="button" @click="openReplay(completedMatch)">Review match</button></div>
         </section>
 

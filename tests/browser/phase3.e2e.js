@@ -19,6 +19,17 @@ test('local fleets stay private, turns pass on misses, and the named result repl
   await page.getByLabel('Player 2 name').fill('Admiral Two');
 
   await placeFleet(page);
+  await expect(page.getByText('5 / 5 vessels placed')).toBeVisible();
+  await expect(page.locator('.boards .is-ship')).toHaveCount(17);
+  await expect(page.locator('.boards .board-ship')).toHaveCount(5);
+  await expect(page.getByRole('button', { name: 'Clear fleet' })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear fleet' }).click();
+  await expect(page.locator('.boards .is-ship')).toHaveCount(0);
+  await page.getByRole('button', { name: /Randomize/ }).click();
+  await expect(page.locator('.boards .is-ship')).toHaveCount(17);
+  await expect(page.getByText('5 / 5 vessels placed')).toBeVisible();
+  await expect(page.locator('.boards .board-panel')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Pass device to Admiral Two' }).click();
   await expect(page.getByRole('heading', { name: 'Pass the device to Admiral Two' })).toBeVisible();
   await expect(page.locator('.board-panel')).toHaveCount(0);
   await expect(page.getByLabel(/Carrier ship/)).toHaveCount(0);
@@ -29,6 +40,10 @@ test('local fleets stay private, turns pass on misses, and the named result repl
   await expect(page.locator('.board-panel .is-ship')).toHaveCount(5);
   await expect(page.getByLabel(/Carrier ship/)).toHaveCount(5);
   await placeFleet(page, 1, 5);
+  await expect(page.getByText('5 / 5 vessels placed')).toBeVisible();
+  await expect(page.locator('.boards .is-ship')).toHaveCount(17);
+  await expect(page.locator('.boards .board-ship')).toHaveCount(5);
+  await page.getByRole('button', { name: 'Continue to first shooter' }).click();
   await expect(page.getByRole('heading', { name: 'Admiral One fires first' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Start battle' }).click();
