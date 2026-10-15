@@ -35,13 +35,11 @@ changing scope. Unresolved future details remain deferred rather than assumed.
 
 1. **Rules foundation (current phase):** this architecture document, a pure
    JavaScript two-player rules engine, and Vitest tests. No playable app yet.
-2. **2D single-player release:** build the Vue 3 setup and battle UI, including
-   manual placement/orientation, randomize/clear controls, first-shooter display,
-   shot feedback, sunk-ship announcements, and victory display. Add built-in local
-   AI: Easy chooses random unshot cells; Medium adds hunt/target after hits; Hard
-   adds probability-based hunting. Complete this single-player release before
-   later game modes. Detailed UI and AI behavior beyond these decisions should
-   be clarified when this phase begins.
+2. **2D single-player release (active):** deliver a responsive Vue 3 browser
+   game using plain JavaScript and Vite. Include manual and drag-and-drop fleet
+   setup, randomize/clear controls, built-in Easy/Medium/Hard local AI, classic
+   battle rules, end-of-game fleet reveal, replay, and local match history.
+   Complete this single-player release before later game modes.
 3. **Local pass-and-play:** add same-device human play and a private setup/turn
    handoff UX. Clarify visibility details before implementation.
 4. **Online multiplayer:** add rooms and synchronized multiplayer with a small
@@ -93,6 +91,60 @@ as a successful action. Tests inject a function returning a number in `[0, 1)`
 where needed; production defaults to `Math.random`. Fleet generation chooses
 among legal placements rather than relying on unbounded random retries.
 
+## Phase 2 confirmed decisions
+
+- Deliver a playable, responsive 2D browser game for desktop and mobile using
+  Vue 3, plain JavaScript, and Vite. Keep the rules engine framework-independent;
+  do not add a graphics library or 3D.
+- Use the classic 10 by 10 board and fleet above. The human selects a ship,
+  chooses horizontal/vertical orientation, and places by click or drag-and-drop.
+  Include randomize and clear controls. Ships may touch, but cannot overlap or
+  extend off-board. Provide accessible controls that also work on touch devices.
+- Randomize the AI fleet and keep it hidden during play. Reveal it when the match
+  ends. Announce the randomly selected first shooter before the first shot.
+- Preserve the engine's turn and validation behavior: one shot per turn; hits,
+  including sinks, retain the turn; a miss passes it; repeated targets are
+  rejected; sunk ships are identified by name; the final sink ends the game.
+  Use the engine APIs and surface its rule errors; do not duplicate rules in UI.
+- Offer Easy (random legal unshot cell), Medium (hunt/target around hits), and
+  Hard (score each unshot cell by the number of legal placements of remaining
+  unsunk ship lengths through it and choose a highest-scoring cell). Medium is
+  the default and difficulty is selected before each match. AI may use only its
+  own shots and publicly revealed sunk-ship lengths, never hidden fleet layout.
+- At completion, provide a new-fleet rematch and replay of the finished match.
+  Replay supports previous/next shot and play/pause. Keep enough match data to
+  reproduce playback and reveal the AI fleet for review.
+- Persist up to the 10 most recent completed matches in browser storage across
+  reloads, with a clear-history control. No account or server synchronization.
+  Validate stored data and explicitly report malformed or unavailable storage;
+  do not silently present a success-shaped fallback. Do not change engine
+  behavior to provide persistence or replay.
+- Use side-by-side boards on desktop and stack them on narrow/mobile screens.
+  Use a clean, modern naval/tactical visual style with restrained colors.
+- This phase does not include pass-and-play, online networking/signaling,
+  external AI providers, tactical economy/items, or 3D.
+- Run the local development server with `npm run dev`; create the production
+  bundle with `npm run build`.
+
+## Phase 2 definition of done
+
+- A new user can select a difficulty, place a legal fleet manually by click or
+  drag-and-drop (or randomize it), start a game, and play a complete match.
+- Human and AI shots flow only through the engine, respect turns, and give
+  visible feedback for misses, hits, sinks, invalid/repeated shots, and victory.
+  First shooter is shown before play; hidden AI ships are not exposed until end.
+- Easy, Medium, and Hard select only legal unshot cells; Medium targets around
+  unresolved hits, and Hard uses placement-count probability scores for the
+  remaining ship lengths. Automated tests cover legality and strategy behavior.
+- Results allow a fresh rematch and a navigable, playable shot-by-shot replay.
+  Completed matches persist across reloads up to the 10-match limit; history can
+  be cleared. Tests cover persistence, validation, and replay navigation.
+- Layout is responsive and setup controls are usable with pointer, keyboard,
+  and touch input. Malformed stored data, storage failures, and engine errors
+  are presented as errors rather than ignored.
+- `npm test` and `npm run build` pass. The project documents local run/build
+  commands above.
+
 ## Phase 1 definition of done
 
 - Architecture and the full ordered roadmap are recorded here.
@@ -116,6 +168,6 @@ among legal placements rather than relying on unbounded random retries.
 - Confirmed requirements and phase plan recorded.
 - Phase 1 complete: framework-independent rules engine and Vitest coverage of all
   acceptance criteria, including legal randomized fleets and complete games.
-- No later-phase implementation has started. The next phase is the Vue 3 2D
-  single-player release with built-in local strategy AI; clarify its deferred
-  details and update this document before implementation.
+- Phase 2 confirmed decisions, boundaries, acceptance criteria, and local run
+  command are recorded above. Phase 2 implementation is active in an isolated
+  worktree based on `main`.
