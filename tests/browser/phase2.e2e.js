@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 
 async function touchDrag(page, source, target, { cancel = false } = {}) {
   await source.evaluate((element) => {
-    window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top - 40);
+    const top = element.hasAttribute('data-placement-cell') ? 160 : 40;
+    window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top - top);
   });
   const from = await source.boundingBox();
   const to = await target.boundingBox();
@@ -98,4 +99,61 @@ test('restarting while AI waits cannot fire early or suppress the new match loop
   await page.clock.runFor(199);
   await expect(shots).toHaveText('1 shots');
   await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('placed ships can be dragged from any segment and invalid drops restore their layout', async ({ page, isMobile }) => {
+  const cells = page.locator('[data-placement-cell]');
+  await cells.nth(0).click();
+  await cells.nth(10).click();
+  const source = cells.nth(2);
+  const target = cells.nth(25);
+  if (isMobile) {
+    await touchDrag(page, source, target);
+  } else {
+    await source.scrollIntoViewIfNeeded();
+    const from = await source.boundingBox();
+    const to = await target.boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+    await expect(page.locator('.placement-valid')).toHaveCount(5);
+    await page.mouse.up();
+  }
+  await expect(cells.nth(23)).toHaveAttribute('aria-label', /Carrier ship/);
+  await expect(cells.nth(27)).toHaveAttribute('aria-label', /Carrier ship/);
+  await expect(cells.nth(0)).toHaveAttribute('aria-label', /open water/);
+  await expect(page.locator('.board-ship[data-ship-id="carrier"]')).toHaveCount(1);
+  const before = await cells.evaluateAll((elements) => elements.map((cell) => cell.getAttribute('aria-label')));
+  if (isMobile) {
+    await touchDrag(page, cells.nth(23), cells.nth(10));
+  } else {
+    const from = await cells.nth(23).boundingBox();
+    const to = await cells.nth(10).boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+    await expect(page.locator('.placement-invalid')).toHaveCount(5);
+    await page.mouse.up();
+  }
+  await expect(page.getByRole('alert')).toContainText('cannot overlap');
+  expect(await cells.evaluateAll((elements) => elements.map((cell) => cell.getAttribute('aria-label')))).toEqual(before);
+  await expect(page.locator('.placement-invalid')).toHaveCount(0);
+});
+
+test('rotation uses the nearest fit and is unavailable once battle starts', async ({ page, isMobile }) => {
+  const cells = page.locator('[data-placement-cell]');
+  await cells.nth(95).click();
+  if (isMobile) {
+    await cells.nth(95).focus();
+    await page.keyboard.press('r');
+  } else {
+    await cells.nth(95).click({ button: 'right' });
+  }
+  await expect(cells.nth(55)).toHaveAttribute('aria-label', /Carrier ship/);
+  await expect(cells.nth(95)).toHaveAttribute('aria-label', /Carrier ship/);
+  await expect(cells.nth(96)).toHaveAttribute('aria-label', /open water/);
+  await page.getByRole('button', { name: 'Randomize' }).click();
+  await page.getByRole('button', { name: 'Begin engagement' }).click();
+  await expect(page.locator('[data-placement-cell]')).toHaveCount(0);
+  await expect(page.locator('.boards .board-panel').nth(1).locator('.board-ship')).toHaveCount(0);
 });
