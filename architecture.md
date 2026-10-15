@@ -40,8 +40,9 @@ changing scope. Unresolved future details remain deferred rather than assumed.
    setup, randomize/clear controls, built-in Easy/Medium/Hard local AI, classic
    battle rules, end-of-game fleet reveal, replay, and local match history.
    Complete this single-player release before later game modes.
-3. **Local pass-and-play:** add same-device human play and a private setup/turn
-   handoff UX. Clarify visibility details before implementation.
+3. **Local pass-and-play (specified, not implemented):** add exactly two humans
+   on the same device, private sequential setup, shared battle boards with
+   unhit ships hidden, and local-match history/replay as specified below.
 4. **Online multiplayer:** add rooms and synchronized multiplayer with a small
    signaling/relay service. GitHub Pages can host static assets but is not
    assumed to provide that service. Networking protocol, hosting, and exact
@@ -165,6 +166,109 @@ among legal placements rather than relying on unbounded random retries.
 - `npm test` and `npm run build` pass. The project documents local run/build
   commands above.
 
+## Phase 3 confirmed decisions
+
+- Support exactly two local human players; 3-4 players remain deferred.
+- Add a mode selector before fleet setup for single-player versus computer or
+  local two-player play. Changing mode during a match requires confirmation
+  before discarding that match.
+- Allow optional player names, defaulting to Player 1 and Player 2.
+- Persist the last-used player names in browser local storage and reuse them
+  for new games. Single-player also allows a human name; its Player 1 default
+  is shared with local two-player mode. Remember Player 2 separately.
+- Trim surrounding whitespace and identify profiles case-insensitively, retaining
+  the latest display capitalization. Local players must have distinct normalized
+  names. A different normalized name selects or creates a separate profile;
+  it does not rename a profile or transfer progress.
+- Set up fleets privately in sequence. Player 1 places their fleet first using
+  the existing setup controls, including movement, rotation, randomize and clear.
+  Finishing setup hides that fleet behind a pass-device/Ready screen before
+  Player 2 begins private setup. Never show the other player's fleet in setup.
+- Once both fleets are complete, select the first shooter randomly and announce
+  them on a shared screen. Require Start battle before enabling shots.
+- During battle show both players' boards, but hide all unhit ship positions on
+  both boards. Unlike single-player, even the current player's unhit fleet must
+  remain hidden. This is shared-screen play, not a private-board battle mode.
+- Clearly identify the current shooter and enable shooting only at their
+  opponent's board. Keep classic rules: hits and sinks retain the turn until a
+  miss; a miss immediately switches players without a battle handoff screen.
+  Rejected shots do not change turns; announce sunk ships by name.
+- At game end reveal both fleets, announce the winning player, and save the
+  completed local match in the existing browser history with the same
+  previous/next and play/pause replay controls.
+- The most recent 10 completed matches across both modes share the existing
+  history limit and clear-history control. Preserve existing single-player
+  history and replay behavior while adding local mode and player labels.
+- A local rematch retains player names, returns to private setup with empty
+  fleets, and randomly selects the first shooter again after setup.
+- Preserve desktop/mobile responsiveness and existing single-player behavior.
+  Do not redesign the wider UI; the user is handling broader UI improvements.
+- No online play, tactical items/economy, external AI providers, 3D, or 3-4
+  player rules in this phase.
+
+### Local high scores and name-based achievements
+
+- Store player progress locally in the browser, independently of the last
+  10 match replays. Clearing match history does not erase remembered names,
+  personal bests, streaks, lifetime wins or unlocked achievements. No accounts,
+  cross-device synchronization or verified player identity are implied.
+- Maintain exactly two leaderboards: single-player (all AI difficulties
+  combined) and local two-player. Only human winners of completed matches
+  qualify; never create a computer profile.
+- Rank by the winner's missed shots, lowest first. Keep one personal-best
+  result per normalized name per mode. Break equal-miss ties by fewer shots
+  fired by that winner, then the earliest qualifying result.
+- Track a single combined consecutive-win streak per profile across both
+  modes. A completed loss resets that profile's current streak; abandoning
+  a match does not. Unlock streak milestones at 3, 5, 10, 20 and 50 wins.
+- Count lifetime wins across both modes, unlocking First Victory and
+  10, 50 and 100 lifetime-win milestones.
+- Short battle unlocks at at most 40 total shots; Long battle unlocks at
+  at least 140. Count shots by both players in a completed match, not elapsed
+  time. Award these to every human participant, including the loser.
+- Ships-advantage achievements require victory with exactly 1, 2, 3, 4 or 5
+  own ships still afloat. Damaged but unsunk ships count. Each exact count is
+  a separate achievement; winning with five does not also unlock counts 1-4.
+- Flawless Aim unlocks on a win with zero missed shots by the winner.
+- Achievements remain unlocked after later losses. Attribute results to the
+  names used for the match, not a name selected later. Apply each completed
+  match to player progress only once; opening or playing a replay must not
+  change scores, streaks, lifetime wins or achievement credit.
+- Existing unnamed single-player matches remain replayable but do not receive
+  retrospective profile, score or achievement credit.
+- This enumerated achievement set bounds Phase 3; further achievements require
+  a later decision. Show high scores and profile achievements without a wider
+  UI redesign. Storage failures and invalid progress data must be surfaced.
+
+## Phase 3 definition of done
+
+- Two humans can select local mode, optionally enter names, privately place
+  complete legal fleets in sequence, acknowledge the setup handoff, and start
+  battle after seeing the randomly selected first shooter.
+- Hidden setup fleets and unhit ships during battle cannot be inferred from
+  rendered ship silhouettes, cell styling, or accessible labels.
+- Both battle boards are visible; only the opposing board accepts the active
+  player's shots. Hit streaks, immediate miss handovers, shot validation,
+  sinking and victory use the existing engine.
+- A complete local match reveals both fleets and persists with correct player
+  names and mode. Replays work after reload and share the 10-match cap without
+  breaking older single-player records.
+- Rematches repeat private setup with retained names and fresh fleets. Mode
+  switching during a match requires confirmation; cancelling preserves it.
+- Remembered names restore after reload, Player 1 is shared across modes,
+  normalized names select the correct profiles, and local duplicate names
+  are rejected. Names stored with finished matches remain stable in replays.
+- Separate mode leaderboards retain each winner's personal best using the
+  specified ordering. Profile achievements, lifetime wins and combined streaks
+  persist independently of replay history. Completed local matches update
+  both human profiles; single-player updates only its human profile.
+- Tests cover achievement thresholds and exact ship counts, cross-mode streaks
+  and loss resets, leaderboard ties, independent profile/history storage,
+  duplicate-result protection and compatibility with unnamed legacy replays.
+- Automated unit and desktop/mobile browser tests cover the new flow, privacy,
+  turn switching, replay/history compatibility, and single-player regressions.
+  Unit tests, browser regressions and production build pass.
+
 ## Phase 1 definition of done
 
 - Architecture and the full ordered roadmap are recorded here.
@@ -204,3 +308,6 @@ among legal placements rather than relying on unbounded random retries.
 - Phase 2 placement refinements complete: movable placed ships, nearest-fit
   rotation, invalid-placement previews and rollback, top-down ship silhouettes,
   and a 50% darker main background.
+- Phase 3 requirements clarified and recorded, including persistent names,
+  mode-specific high scores and name-based achievements; implementation has
+  not started.
